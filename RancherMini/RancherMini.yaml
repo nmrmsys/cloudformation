@@ -1,0 +1,255 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Rancher Minimum Stack
+
+# Create Stack
+Resources:
+  RancherServer: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !FindInMap [RancherAMI, !Ref 'AWS::Region', Server]
+      InstanceType: !Ref ServerInstanceType
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds: [!Ref RancherServerSG]
+      KeyName: !Ref KeyName
+      Tags: 
+        - Key: Name
+          Value: rancher-server
+      Monitoring: True
+  RancherDocker: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !FindInMap [RancherAMI, !Ref 'AWS::Region', OsOnly]
+      InstanceType: !Ref DockerInstanceType
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds: [!Ref RancherDockerSG]
+      KeyName: !Ref KeyName
+      Tags: 
+        - Key: Name
+          Value: rancher-docker
+      Monitoring: True
+  RancherServerSG: 
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: rancher-server security group
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+  RancherDockerSG: 
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: rancher-docker security group
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 500
+          ToPort: 500
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 4500
+          ToPort: 4500
+          CidrIp: 0.0.0.0/0
+  RancherServerEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  RancherDockerEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  RancherServerEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref RancherServer
+      AllocationId: !GetAtt RancherServerEIP.AllocationId
+  RancherDockerEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref RancherDocker
+      AllocationId: !GetAtt RancherDockerEIP.AllocationId
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Rancher Minimum Stack
+        Parameters:
+          - ServerInstanceType
+          - DockerInstanceType
+          - VpcId
+          - SubnetId
+          - KeyName
+    ParameterLabels:
+      ServerInstanceType:
+        default: Rancher Server
+      DockerInstanceType:
+        default: Docker Host
+      VpcId:
+        default: Vpc
+      SubnetId:
+        default: Subnet
+      KeyName:
+        default: KeyPair
+
+Parameters:
+  ServerInstanceType:
+    Type: String
+    AllowedValues:
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - r4.large
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+    Default: t2.small
+  DockerInstanceType:
+    Type: String
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - r4.large
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+    Default: t2.micro
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetId:
+    Description: Choose Public Subnet
+    Type: AWS::EC2::Subnet::Id
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+
+Mappings:
+  RancherAMI:
+    ap-northeast-1:
+      Server: ami-2b92824c
+      OsOnly: ami-8bb1a7ec
+    ap-northeast-2:
+      Server: ami-63558a0d
+      OsOnly: ami-9d03dcf3
+    ap-south-1:
+      Server: ami-63bdc30c
+      OsOnly: ami-3576085a
+    ap-southeast-1:
+      Server: ami-3f58d15c
+      OsOnly: ami-4f921c2c
+    ap-southeast-2:
+      Server: ami-15c9da76
+      OsOnly: ami-d64c5fb5
+    ca-central-1:
+      Server: ami-d28a35b6
+      OsOnly: ami-4fa7182b
+    eu-central-1:
+      Server: ami-b1ab0ade
+      OsOnly: ami-8c52f4e3
+    eu-west-1:
+      Server: ami-bcc226c5
+      OsOnly: ami-64b2a802
+    eu-west-2:
+      Server: ami-683c2a0c
+      OsOnly: ami-4806102c
+    sa-east-1:
+      Server: ami-a6b9d3ca
+      OsOnly: ami-ae1b71c2
+    us-east-1:
+      Server: ami-ac281aba
+      OsOnly: ami-067c4a10
+    us-east-2:
+      Server: ami-cd2908a8
+      OsOnly: ami-b74b6ad2
+    us-west-1:
+      Server: ami-1dd0fc7d
+      OsOnly: ami-04351964
+    us-west-2:
+      Server: ami-659d8b1c
+      OsOnly: ami-bed0c7c7
