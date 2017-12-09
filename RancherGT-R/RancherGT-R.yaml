@@ -1,0 +1,211 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Rancher Server Explosion Speed Stack
+
+# Create Stack
+Resources:
+  RancherServer: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !FindInMap [RancherAMI, !Ref 'AWS::Region', OsOnly]
+      InstanceType: !Ref ServerInstanceType
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds: [!Ref RancherServerSG]
+      KeyName: !Ref KeyName
+      Tags: 
+        - Key: Name
+          Value: rancher-server
+      Monitoring: True
+      UserData:
+        Fn::Base64: !Sub |
+          #cloud-config
+          rancher:
+            services:
+              rancher-server:
+                image: rancher/server
+                restart: unless-stopped
+                ports:
+                  - 8080:8080
+          runcmd:
+            - echo `date` "runcmd" >> /var/lib/rancher/rancher_server_setup.log
+          write_files:
+            - path: /etc/rc.local
+              permissions: "0755"
+              owner: root
+              content: |
+                #!/bin/bash
+                echo `date` "rc.local before" >> /var/lib/rancher/rancher_server_setup.log
+                nohup /var/lib/rancher/rancher_server_setup.sh &
+                echo `date` "rc.local after" >> /var/lib/rancher/rancher_server_setup.log
+            - path: /var/lib/rancher/rancher_server_setup.sh
+              permissions: "0755"
+              owner: root
+              content: |
+                #!/bin/bash
+                echo `date` "rancher_server_setup before" >> /var/lib/rancher/rancher_server_setup.log
+                if [ ! -e /var/lib/rancher/rancher_server_setup.done ]; then
+                  echo `date` "rancher_server_setup.done false" >> /var/lib/rancher/rancher_server_setup.log
+                  wait-for-docker #>> /var/lib/rancher/rancher_server_setup.log
+                  echo `date` "wait-for-docker done" >> /var/lib/rancher/rancher_server_setup.log
+                  cnt="0"
+                  while [ "$cnt" = "0" ]
+                  do
+                    sleep 5
+                    cnt=`docker ps | grep "rancher/server" | grep -v grep | wc -l`
+                    #echo `date` "rancher/server check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
+                  done
+                  echo `date` "rancher/server check done."  >> /var/lib/rancher/rancher_server_setup.log
+                  cnt="0"
+                  while [ "$cnt" = "0" ]
+                  do
+                    sleep 5
+                    cnt=`wget https://localhost:8080/v2-beta/registrationtokens -qO - | jq -r .links.self | wc -l`
+                    #echo `date` "registrationtokens check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
+                  done
+                  echo `date` "registrationtokens done."  >> /var/lib/rancher/rancher_server_setup.log
+                  cnt="0"
+                  while [ "$cnt" = "0" ]
+                  do
+                    sleep 5
+                    cnt=`wget https://localhost:8080/v2-beta/registrationtokens -qO - | jq -r .data[].command | wc -l`
+                    echo `date` "add host command check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
+                  done
+                  cmd=`wget https://localhost:8080/v2-beta/registrationtokens -qO - | jq -r .data[].command`
+                  $cmd
+                  echo `date` "add host command done."  >> /var/lib/rancher/rancher_server_setup.log
+                  touch /var/lib/rancher/rancher_server_setup.done
+                else
+                  echo `date` "rancher_server_setup.done true" >> /var/lib/rancher/rancher_server_setup.log
+                fi
+                echo `date` "rancher_server_setup after" >> /var/lib/rancher/rancher_server_setup.log
+  RancherServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: rancher-server security group
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+  RancherServerEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  RancherServerEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref RancherServer
+      AllocationId: !GetAtt RancherServerEIP.AllocationId
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Rancher Server Stack
+        Parameters:
+          - VpcId
+          - SubnetId
+          - ServerInstanceType
+          - KeyName
+    ParameterLabels:
+      VpcId:
+        default: Vpc
+      SubnetId:
+        default: Subnet
+      ServerInstanceType:
+        default: Rancher Server
+      KeyName:
+        default: KeyPair
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetId:
+    Description: Choose Public Subnet
+    Type: AWS::EC2::Subnet::Id
+  ServerInstanceType:
+    Type: String
+    AllowedValues:
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - r4.large
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+    Default: c4.8xlarge
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+
+Mappings:
+  RancherAMI: # v1.1.0-hvm-1
+    ap-northeast-1:
+      OsOnly: ami-14d72f72
+    ap-northeast-2:
+      OsOnly: ami-c2568eac
+    ap-south-1:
+      OsOnly: ami-7145011e
+    ap-southeast-1:
+      OsOnly: ami-4866042b
+    ap-southeast-2:
+      OsOnly: ami-74aeb417
+    ca-central-1:
+      OsOnly: ami-0f3a846b
+    eu-central-1:
+      OsOnly: ami-1c339973
+    eu-west-1:
+      OsOnly: ami-6b2cd712
+    eu-west-2:
+      OsOnly: ami-2dc0d049
+    sa-east-1:
+      OsOnly: ami-88087be4
+    us-east-1:
+      OsOnly: ami-62000e19
+    us-east-2:
+      OsOnly: ami-efd4f78a
+    us-west-1:
+      OsOnly: ami-9c5b6ffc
+    us-west-2:
+      OsOnly: ami-9515feed

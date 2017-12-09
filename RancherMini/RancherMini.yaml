@@ -6,7 +6,7 @@ Resources:
   RancherServer: 
     Type: AWS::EC2::Instance
     Properties: 
-      ImageId: !FindInMap [RancherAMI, !Ref 'AWS::Region', Server]
+      ImageId: !FindInMap [RancherAMI, !Ref 'AWS::Region', OsOnly]
       InstanceType: !Ref ServerInstanceType
       SubnetId: !Ref SubnetId
       SecurityGroupIds: [!Ref RancherServerSG]
@@ -15,6 +15,16 @@ Resources:
         - Key: Name
           Value: rancher-server
       Monitoring: True
+      UserData:
+        Fn::Base64: !Sub |
+          #cloud-config
+          rancher:
+            services:
+              rancher-server:
+                image: rancher/server
+                restart: unless-stopped
+                ports:
+                  - 8080:8080
   RancherDocker: 
     Type: AWS::EC2::Instance
     Properties: 
@@ -210,46 +220,32 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
 
 Mappings:
-  RancherAMI:
+  RancherAMI: # v1.1.0-hvm-1
     ap-northeast-1:
-      Server: ami-2b92824c
-      OsOnly: ami-8bb1a7ec
+      OsOnly: ami-14d72f72
     ap-northeast-2:
-      Server: ami-63558a0d
-      OsOnly: ami-9d03dcf3
+      OsOnly: ami-c2568eac
     ap-south-1:
-      Server: ami-63bdc30c
-      OsOnly: ami-3576085a
+      OsOnly: ami-7145011e
     ap-southeast-1:
-      Server: ami-3f58d15c
-      OsOnly: ami-4f921c2c
+      OsOnly: ami-4866042b
     ap-southeast-2:
-      Server: ami-15c9da76
-      OsOnly: ami-d64c5fb5
+      OsOnly: ami-74aeb417
     ca-central-1:
-      Server: ami-d28a35b6
-      OsOnly: ami-4fa7182b
+      OsOnly: ami-0f3a846b
     eu-central-1:
-      Server: ami-b1ab0ade
-      OsOnly: ami-8c52f4e3
+      OsOnly: ami-1c339973
     eu-west-1:
-      Server: ami-bcc226c5
-      OsOnly: ami-64b2a802
+      OsOnly: ami-6b2cd712
     eu-west-2:
-      Server: ami-683c2a0c
-      OsOnly: ami-4806102c
+      OsOnly: ami-2dc0d049
     sa-east-1:
-      Server: ami-a6b9d3ca
-      OsOnly: ami-ae1b71c2
+      OsOnly: ami-88087be4
     us-east-1:
-      Server: ami-ac281aba
-      OsOnly: ami-067c4a10
+      OsOnly: ami-62000e19
     us-east-2:
-      Server: ami-cd2908a8
-      OsOnly: ami-b74b6ad2
+      OsOnly: ami-efd4f78a
     us-west-1:
-      Server: ami-1dd0fc7d
-      OsOnly: ami-04351964
+      OsOnly: ami-9c5b6ffc
     us-west-2:
-      Server: ami-659d8b1c
-      OsOnly: ami-bed0c7c7
+      OsOnly: ami-9515feed
