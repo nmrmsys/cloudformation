@@ -46,6 +46,7 @@ Resources:
                   echo `date` "rancher_server_setup.done false" >> /var/lib/rancher/rancher_server_setup.log
                   wait-for-docker #>> /var/lib/rancher/rancher_server_setup.log
                   echo `date` "wait-for-docker done" >> /var/lib/rancher/rancher_server_setup.log
+                  
                   cnt="0"
                   while [ "$cnt" = "0" ]
                   do
@@ -53,7 +54,8 @@ Resources:
                     cnt=`docker ps | grep "rancher/server" | grep -v grep | wc -l`
                     #echo `date` "rancher/server check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
                   done
-                  echo `date` "rancher/server check done."  >> /var/lib/rancher/rancher_server_setup.log
+                  echo `date` "rancher/server check done"  >> /var/lib/rancher/rancher_server_setup.log
+                  
                   cnt="0"
                   while [ "$cnt" = "0" ]
                   do
@@ -61,21 +63,28 @@ Resources:
                     cnt=`wget https://localhost:8080/v2-beta/registrationtokens -qO - | jq -r .links.self | wc -l`
                     #echo `date` "registrationtokens check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
                   done
-                  echo `date` "registrationtokens done."  >> /var/lib/rancher/rancher_server_setup.log
+                  echo `date` "registrationtokens done"  >> /var/lib/rancher/rancher_server_setup.log
+                  
                   sip=`wget http://169.254.169.254/latest/meta-data/public-ipv4 -qO -`
+                  
                   docker run --rm appropriate/curl -ik 'https://'$sip':8080/v2-beta/settings/api.host' -X PUT  -H 'content-type: application/json' \
                     -d '{"id":"api.host","type":"activeSetting","baseType":"setting","name":"api.host","activeValue":null,"inDb":false,"source":null,"value":"http://'$sip':8080"}'  >> /var/lib/rancher/curl.log
-                  echo `date` "api host setting  done."  >> /var/lib/rancher/rancher_server_setup.log
+                  echo `date` "api host setting done"  >> /var/lib/rancher/rancher_server_setup.log
+                  
+                  docker run --rm appropriate/curl -ik 'https://'$sip':8080/v2-beta/projects/1a5/registrationtoken' -H 'content-type: application/json' -d '{"type":"registrationToken"}'
+                  echo `date` "custom host registrationtoken done"  >> /var/lib/rancher/rancher_server_setup.log
+                  
                   cnt="0"
                   while [ "$cnt" = "0" ]
                   do
                     sleep 5
                     cnt=`wget https://localhost:8080/v2-beta/registrationtokens -qO - | jq -r .data[].command | wc -l`
-                    #echo `date` "add host command check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
+                    #echo `date` "run agent command check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
                   done
+                  
                   cmd=`wget https://localhost:8080/v2-beta/registrationtokens -qO - | jq -r .data[].command`
                   $cmd
-                  echo `date` "add host command done."  >> /var/lib/rancher/rancher_server_setup.log
+                  echo `date` "run agent command done"  >> /var/lib/rancher/rancher_server_setup.log
                   touch /var/lib/rancher/rancher_server_setup.done
                 else
                   echo `date` "rancher_server_setup.done true" >> /var/lib/rancher/rancher_server_setup.log
