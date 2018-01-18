@@ -62,12 +62,16 @@ Resources:
                     #echo `date` "registrationtokens check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
                   done
                   echo `date` "registrationtokens done."  >> /var/lib/rancher/rancher_server_setup.log
+                  sip=`wget http://169.254.169.254/latest/meta-data/public-ipv4 -qO -`
+                  docker run --rm appropriate/curl -ik 'https://'$sip':8080/v2-beta/settings/api.host' -X PUT  -H 'content-type: application/json' \
+                    -d '{"id":"api.host","type":"activeSetting","baseType":"setting","name":"api.host","activeValue":null,"inDb":false,"source":null,"value":"http://'$sip':8080"}'  >> /var/lib/rancher/curl.log
+                  echo `date` "api host setting  done."  >> /var/lib/rancher/rancher_server_setup.log
                   cnt="0"
                   while [ "$cnt" = "0" ]
                   do
                     sleep 5
                     cnt=`wget https://localhost:8080/v2-beta/registrationtokens -qO - | jq -r .data[].command | wc -l`
-                    echo `date` "add host command check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
+                    #echo `date` "add host command check: $cnt"  >> /var/lib/rancher/rancher_server_setup.log
                   done
                   cmd=`wget https://localhost:8080/v2-beta/registrationtokens -qO - | jq -r .data[].command`
                   $cmd
@@ -180,32 +184,34 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
 
 Mappings:
-  RancherAMI: # v1.1.0-hvm-1
+  RancherAMI: # v1.1.3-hvm-1
     ap-northeast-1:
-      OsOnly: ami-14d72f72
+      OsOnly: ami-a873edce
     ap-northeast-2:
-      OsOnly: ami-c2568eac
+      OsOnly: ami-e8af0f86
     ap-south-1:
-      OsOnly: ami-7145011e
+      OsOnly: ami-74a0f41b
     ap-southeast-1:
-      OsOnly: ami-4866042b
+      OsOnly: ami-647e0e18
     ap-southeast-2:
-      OsOnly: ami-74aeb417
+      OsOnly: ami-3643b154
     ca-central-1:
-      OsOnly: ami-0f3a846b
+      OsOnly: ami-d3f471b7
     eu-central-1:
-      OsOnly: ami-1c339973
+      OsOnly: ami-4c22b123
     eu-west-1:
-      OsOnly: ami-6b2cd712
+      OsOnly: ami-be0293c7
     eu-west-2:
-      OsOnly: ami-2dc0d049
+      OsOnly: ami-0d938b69
+    eu-west-3:
+      OsOnly: ami-7503b408
     sa-east-1:
-      OsOnly: ami-88087be4
+      OsOnly: ami-c11153ad
     us-east-1:
-      OsOnly: ami-62000e19
+      OsOnly: ami-72613d08
     us-east-2:
-      OsOnly: ami-efd4f78a
+      OsOnly: ami-67d1fa02
     us-west-1:
-      OsOnly: ami-9c5b6ffc
+      OsOnly: ami-16cdcd76
     us-west-2:
-      OsOnly: ami-9515feed
+      OsOnly: ami-8916a3f1
