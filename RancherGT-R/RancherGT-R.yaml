@@ -71,7 +71,7 @@ Resources:
                     -d '{"id":"api.host","type":"activeSetting","baseType":"setting","name":"api.host","activeValue":null,"inDb":false,"source":null,"value":"http://'$sip':8080"}'  >> /var/lib/rancher/curl.log
                   echo `date` "api host setting done"  >> /var/lib/rancher/rancher_server_setup.log
                   
-                  docker run --rm appropriate/curl -ik 'https://'$sip':8080/v2-beta/projects/1a5/registrationtoken' -H 'content-type: application/json' -d '{"type":"registrationToken"}'
+                  docker run --rm appropriate/curl -ik 'https://'$sip':8080/v2-beta/projects/1a5/registrationtoken' -X POST -H 'content-type: application/json' -d '{"type":"registrationToken"}'
                   echo `date` "custom host registrationtoken done"  >> /var/lib/rancher/rancher_server_setup.log
                   
                   cnt="0"
